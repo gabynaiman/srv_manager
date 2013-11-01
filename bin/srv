@@ -1,0 +1,122 @@
+#!/usr/bin/env ruby
+require 'thor'
+require 'hirb'
+require File.expand_path('../lib/srv', File.dirname(__FILE__))
+
+module Srv
+  class CLI < Thor
+
+    desc 'version', 'Show Srv version number'
+    def version
+      puts Srv::VERSION
+    end
+
+    option :dir, aliases: :d
+    option :processes, aliases: :p, type: :numeric
+    desc 'add <name> <command>', 'Add new service'
+    def add(name, command)
+      Srv.with_context do |ctx|
+        ctx.services << Service.new(name, command, options)
+      end
+    end
+
+    desc 'remove <name>', 'Remove service'
+    def remove(name)
+      Srv.with_context do |ctx|
+        service = ctx.services.detect { |s| s.name == name }
+        if service
+          service.stop
+          ctx.services.delete service
+        end
+      end
+    end
+
+    desc 'start <name>', 'Start service'
+    def start(name)
+      Srv.with_context do |ctx|
+        service = ctx.services.detect { |s| s.name == name }
+        service.start
+      end
+    end
+
+    desc 'stop <name>', 'Stop service'
+    def stop(name)
+      Srv.with_context do |ctx|
+        service = ctx.services.detect { |s| s.name == name }
+        service.stop
+      end
+    end
+
+    desc 'restart <name>', 'Restart service'
+    def restart(name)
+      Srv.with_context do |ctx|
+        service = ctx.services.detect { |s| s.name == name }
+        service.restart
+      end
+    end
+
+    desc 'status <name>', 'Show service status'
+    def status(name)
+      Srv.with_context do |ctx|
+        service = ctx.services.detect { |s| s.name == name }
+        processes = service.processes.map do |process|
+          {
+            PID: process.id,
+            Alive: process.alive?
+          }
+        end
+        puts Hirb::Helpers::AutoTable.render(processes, unicode: true, fields: [:PID, :Alive]) 
+      end
+    end
+
+    option :stop, type: :boolean
+    desc 'monitor', 'Start service monitor'
+    def monitor
+      Srv.with_context do |ctx|
+        if options[:stop]
+          if ctx.monitor.alive?
+            ctx.monitor.stop
+            puts 'Monitor stoped'
+          end
+        else
+          if ctx.monitor.alive?
+            puts "Monitor already started (PID: #{ctx.monitor.pid})"
+          else
+            ctx.monitor.start
+            puts "Monitor started (PID: #{ctx.monitor.pid})"
+          end
+        end
+      end
+    end
+
+    desc 'logs', 'Show logs'
+    def logs
+      puts `tail #{LOG_FILE}`
+    end
+
+    desc 'ls', 'List configured services'
+    def ls
+      Srv.with_context do |ctx|
+        services = ctx.services.map do |service|
+          {
+            Service: service.name,
+            Command: service.command.text,
+            Processes: service.processes.count
+          }
+        end
+        puts Hirb::Helpers::AutoTable.render(services, unicode: true, fields: [:Service, :Command, :Processes]) 
+      end
+    end
+
+    desc 'clean', 'Remove all services'
+    def clean
+      Srv.with_context do |ctx|
+        ctx.services.each(&:stop)
+        ctx.services.clear
+      end
+    end
+
+  end
+end
+
+Srv::CLI.start
