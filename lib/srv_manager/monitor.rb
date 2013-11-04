@@ -5,6 +5,7 @@ module SrvManager
 
     def start(sleep_time=60)
       @pid = ::Process.fork do
+        sleep 1
         loop do
           Context.scoped do |ctx|
             ctx.services.each do |service|
