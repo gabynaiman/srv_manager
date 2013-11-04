@@ -1,29 +1,35 @@
 #!/usr/bin/env ruby
 require 'thor'
 require 'hirb'
-require File.expand_path('../lib/srv', File.dirname(__FILE__))
+require 'json'
 
-module Srv
+require File.expand_path('../lib/srv_manager', File.dirname(__FILE__))
+
+
+module SrvManager
   class CLI < Thor
 
-    desc 'version', 'Show Srv version number'
+    desc 'version', 'Show SrvManager version number'
     def version
-      puts Srv::VERSION
+      puts SrvManager::VERSION
     end
 
     option :dir, aliases: :d
     option :processes, aliases: :p, type: :numeric
-    desc 'add <name> <command>', 'Add new service'
+    option :auto, type: :boolean
+    option :rvm, type: :boolean
+    option :env, type: :hash
+    desc 'add <NAME> <COMMAND>', 'Add new service'
     def add(name, command)
-      Srv.with_context do |ctx|
+      Context.scoped do |ctx|
         ctx.services << Service.new(name, command, options)
       end
     end
 
-    desc 'remove <name>', 'Remove service'
-    def remove(name)
-      Srv.with_context do |ctx|
-        service = ctx.services.detect { |s| s.name == name }
+    desc 'rm <NAME>', 'Remove service'
+    def rm(name)
+      Context.scoped do |ctx|
+        service = find_service name, ctx
         if service
           service.stop
           ctx.services.delete service
@@ -31,59 +37,69 @@ module Srv
       end
     end
 
-    desc 'start <name>', 'Start service'
+    desc 'start <NAME>', 'Start service'
     def start(name)
-      Srv.with_context do |ctx|
-        service = ctx.services.detect { |s| s.name == name }
+      Context.scoped(safe: true) do |ctx|
+        service = find_service name, ctx
         service.start
       end
     end
 
-    desc 'stop <name>', 'Stop service'
+    desc 'stop <NAME>', 'Stop service'
     def stop(name)
-      Srv.with_context do |ctx|
-        service = ctx.services.detect { |s| s.name == name }
+      Context.scoped(safe: true) do |ctx|
+        service = find_service name, ctx
         service.stop
       end
     end
 
-    desc 'restart <name>', 'Restart service'
+    desc 'restart <NAME>', 'Restart service'
     def restart(name)
-      Srv.with_context do |ctx|
-        service = ctx.services.detect { |s| s.name == name }
+      Context.scoped(safe: true) do |ctx|
+        service = find_service name, ctx
         service.restart
       end
     end
 
-    desc 'status <name>', 'Show service status'
-    def status(name)
-      Srv.with_context do |ctx|
-        service = ctx.services.detect { |s| s.name == name }
+    desc 'ps <NAME>', 'Show service processes'
+    def ps(name)
+      Context.scoped do |ctx|
+        service = find_service name, ctx
+
+        return if service.processes.empty?
+
         processes = service.processes.map do |process|
           {
             PID: process.id,
-            Alive: process.alive?
+            Status: process.alive? ? 'Running' : 'Killed'
           }
         end
-        puts Hirb::Helpers::AutoTable.render(processes, unicode: true, fields: [:PID, :Alive]) 
+        puts Hirb::Helpers::AutoTable.render(processes, unicode: true, fields: [:PID, :Status]) 
       end
     end
 
+    option :start, type: :boolean
     option :stop, type: :boolean
     desc 'monitor', 'Start service monitor'
     def monitor
-      Srv.with_context do |ctx|
+      Context.scoped do |ctx|
         if options[:stop]
           if ctx.monitor.alive?
             ctx.monitor.stop
             puts 'Monitor stoped'
           end
-        else
+        elsif options[:start]
           if ctx.monitor.alive?
             puts "Monitor already started (PID: #{ctx.monitor.pid})"
           else
             ctx.monitor.start
             puts "Monitor started (PID: #{ctx.monitor.pid})"
+          end
+        else
+          if ctx.monitor.alive?
+            puts "Monitor running (PID: #{ctx.monitor.pid})"
+          else
+            puts 'Monitor not running'
           end
         end
       end
@@ -94,29 +110,67 @@ module Srv
       puts `tail #{LOG_FILE}`
     end
 
+    option :dir, type: :boolean, aliases: :d
+    option :env, type: :boolean, aliases: :e
     desc 'ls', 'List configured services'
     def ls
-      Srv.with_context do |ctx|
-        services = ctx.services.map do |service|
+      Context.scoped do |ctx|
+        return if ctx.services.empty?
+
+        services = ctx.services.sort_by(&:name).map do |service|
           {
             Service: service.name,
+            Status: service.started? ? 'Started' : 'Stoped',
+            Alive: service.processes.select(&:alive?).count,
+            Dead: service.processes.reject(&:alive?).count,
             Command: service.command.text,
-            Processes: service.processes.count
+            Env: service.command.env.map{|k,v| "#{k}=#{v}"},
+            Dir: service.command.dir
           }
         end
-        puts Hirb::Helpers::AutoTable.render(services, unicode: true, fields: [:Service, :Command, :Processes]) 
+
+        fields = [:Service, :Status, :Alive, :Dead, :Command]
+        fields << :Env if options[:env]
+        fields << :Dir if options[:dir]
+
+        puts Hirb::Helpers::AutoTable.render(services, unicode: true, fields: fields) 
       end
     end
 
     desc 'clean', 'Remove all services'
     def clean
-      Srv.with_context do |ctx|
-        ctx.services.each(&:stop)
-        ctx.services.clear
+      Context.scoped(safe: true) do |ctx|
+        ctx.clean
       end
+    end
+
+    desc 'dump', 'Dump service configuration'
+    def dump
+      Context.scoped do |ctx|
+        puts JSON.pretty_generate(ctx.to_hash)
+      end
+    end
+
+    desc 'load', 'Load service configuration'
+    def load(filename)
+      json = JSON.parse(File.read(filename))
+      Context.scoped do |ctx|
+        ctx.load json
+      end
+    end
+
+    private
+
+    def find_service(name, context)
+      service = context.services.detect { |s| s.name == name }
+      unless service
+        puts "Service not found: #{name}"
+        exit 1
+      end
+      service
     end
 
   end
 end
 
-Srv::CLI.start
+SrvManager::CLI.start

@@ -1,16 +1,16 @@
 # coding: utf-8
 lib = File.expand_path('../lib', __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-require 'srv/version'
+require 'srv_manager/version'
 
 Gem::Specification.new do |spec|
-  spec.name          = "srv"
-  spec.version       = Srv::VERSION
+  spec.name          = "srv_manager"
+  spec.version       = SrvManager::VERSION
   spec.authors       = ["Gabriel Naiman"]
   spec.email         = ["gabynaiman@gmail.com"]
-  spec.description   = %q{TODO: Write a gem description}
-  spec.summary       = %q{TODO: Write a gem summary}
-  spec.homepage      = ""
+  spec.description   = 'Service admin and monitor'
+  spec.summary       = 'Service admin and monitor'
+  spec.homepage      = 'http://github.com/gabynaiman/srv_manager'
   spec.license       = "MIT"
 
   spec.files         = `git ls-files`.split($/)

@@ -1,12 +1,12 @@
-# Srv
+# SrvManager
 
-TODO: Write a gem description
+Service admin and monitor
 
 ## Installation
 
 Add this line to your application's Gemfile:
 
-    gem 'srv'
+    gem 'srv_manager'
 
 And then execute:
 
@@ -14,7 +14,7 @@ And then execute:
 
 Or install it yourself as:
 
-    $ gem install srv
+    $ gem install srv_manager
 
 ## Usage
 
