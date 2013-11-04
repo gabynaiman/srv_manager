@@ -18,7 +18,7 @@ module SrvManager
     end
 
     def stop
-      ::Process.kill 'TERM', pid if pid
+      ::Process.kill 9, pid if pid
     rescue Errno::ESRCH
     end
 
