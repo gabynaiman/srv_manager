@@ -18,6 +18,7 @@ module SrvManager
     option :processes, aliases: :p, type: :numeric
     option :auto, type: :boolean
     option :rvm, type: :boolean
+    option :pidfile
     option :env, type: :hash
     desc 'add <NAME> <COMMAND>', 'Add new service'
     def add(name, command)
@@ -151,7 +152,7 @@ module SrvManager
       end
     end
 
-    desc 'load', 'Load service configuration'
+    desc 'load <JSON_FILE>', 'Load service configuration'
     def load(filename)
       json = JSON.parse(File.read(filename))
       Context.scoped do |ctx|

@@ -11,6 +11,7 @@ module SrvManager
     def start
       return if alive?
       command.rvm ? rvm_start : default_start
+      @id = wait_for_pid(command.pidfile) if command.pidfile
       LOGGER.info "Started process #{@id}"
     end
 
@@ -42,7 +43,11 @@ module SrvManager
     private
 
     def detault_start
-      @id = ::Process.spawn command.env, command.text, chdir: command.dir, out: '/dev/null', err: '/dev/null'
+      @id = ::Process.spawn command.env, 
+                            command.text, 
+                            chdir: command.dir, 
+                            out: '/dev/null', 
+                            err: '/dev/null'
       ::Process.detach @id
     end
 
@@ -54,15 +59,15 @@ module SrvManager
                                 out: '/dev/null', 
                                 err: '/dev/null'
       ::Process.detach rvm_pid
-      @id = wait_for_pid pid_file
+      @id = wait_for_pid pid_file, true
     end
 
-    def wait_for_pid(filename)
+    def wait_for_pid(filename, delete=false)
       Timeout.timeout(60) do
         loop do
           if File.exists? filename
             pid = File.read(filename).to_i
-            File.delete filename
+            File.delete filename if delete
             return pid
           end
           sleep 0.1
