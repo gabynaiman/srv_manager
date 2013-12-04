@@ -41,13 +41,13 @@ module SrvManager
     private
 
     def self.load
-      LOGGER.info "Reading context from #{data_file}"
+      LOGGER.debug "Reading context from #{data_file}"
       return new unless File.exists? data_file
       Marshal.load(File.read(data_file))
     end
 
     def self.save(context)
-      LOGGER.info "Saving context to #{data_file}"
+      LOGGER.debug "Saving context to #{data_file}"
       FileUtils.mkpath File.dirname(data_file) unless Dir.exists? File.dirname(data_file)
       File.write data_file, Marshal.dump(context)
     end
