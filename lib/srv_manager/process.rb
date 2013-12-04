@@ -16,12 +16,14 @@ module SrvManager
     end
 
     def stop
-      return unless started?
-      begin
-        ::Process.kill 'TERM', @id
-      rescue Errno::ESRCH
-      end
+      send_signal 'TERM'
       LOGGER.info "Stoped process #{@id}"
+      @id = nil
+    end
+
+    def kill
+      send_signal 'KILL'
+      LOGGER.info "Killed process #{@id}"
       @id = nil
     end
 
@@ -60,6 +62,14 @@ module SrvManager
                                 err: '/dev/null'
       ::Process.detach rvm_pid
       @id = wait_for_pid pid_file, true
+    end
+
+    def send_signal(signal)
+      return unless alive?
+      begin
+        ::Process.kill signal, @id
+      rescue Errno::ESRCH
+      end
     end
 
     def wait_for_pid(filename, delete=false)

@@ -28,6 +28,11 @@ module SrvManager
       LOGGER.info "Stoped service #{name}"
     end
 
+    def kill
+      processes.each(&:kill)
+      LOGGER.info "Killed service #{name}"
+    end
+
     def restart
       processes.each(&:restart)
     end

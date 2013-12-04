@@ -46,11 +46,12 @@ module SrvManager
       end
     end
 
+    option :kill, type: :boolean
     desc 'stop <NAME>', 'Stop service'
     def stop(name)
       Context.scoped(safe: true) do |ctx|
         service = find_service name, ctx
-        service.stop
+        options[:kill] ? service.kill : service.stop
       end
     end
 
