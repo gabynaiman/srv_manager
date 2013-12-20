@@ -51,6 +51,7 @@ module SrvManager
           dir: json['command']['dir'], 
           env: json['command']['env'], 
           rvm: json['command']['rvm'], 
+          pidfile: json['command']['pidfile'], 
           processes: json['processes'],
           auto: json['auto']
     end
