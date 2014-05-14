@@ -44,7 +44,7 @@ module SrvManager
 
     private
 
-    def detault_start
+    def default_start
       @id = ::Process.spawn command.env, 
                             command.text, 
                             chdir: command.dir, 
