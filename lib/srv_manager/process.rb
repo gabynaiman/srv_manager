@@ -55,9 +55,13 @@ module SrvManager
 
     def rvm_start
       pid_file = File.expand_path "#{self.object_id}_#{Time.now.to_i}.pid", TMP_PATH
-      rvm_pid = ::Process.spawn command.env.merge('SRV_COMMAND' => command.text, 'SRV_PIDFILE' => pid_file), 
+      params = {
+        'SRV_COMMAND' => command.text, 
+        'SRV_PIDFILE' => pid_file, 
+        'CHDIR' => command.dir
+      }
+      rvm_pid = ::Process.spawn command.env.merge(params), 
                                 RVM_RUNNER, 
-                                chdir: command.dir, 
                                 out: '/dev/null', 
                                 err: '/dev/null'
       ::Process.detach rvm_pid
